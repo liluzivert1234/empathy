@@ -12,38 +12,36 @@ export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleAddMessage = async () => {
-    if (inputValue.trim() === "") return;
+ const handleAddMessage = async () => {
+  if (inputValue.trim() === "") return;
 
-    // Add user's message first
-    const newMessages = [
-      ...messages,
-      { role: "user", content: inputValue },
-    ];
+  const newMessages: ChatMessage[] = [
+    ...messages,
+    { role: "user" as const, content: inputValue },
+  ];
+  setMessages(newMessages);
+  setInputValue("");
+  setLoading(true);
 
-    
-    setMessages(newMessages);
-    setInputValue("");
-    setLoading(true);
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: newMessages }),
+    });
 
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
-      });
+    const data = await res.json();
 
-      const data = await res.json();
-
-      if (data.message) {
-        setMessages([...newMessages, data.message]);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+    if (data.message) {
+      setMessages([...newMessages, data.message as ChatMessage]);
     }
-  };
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
