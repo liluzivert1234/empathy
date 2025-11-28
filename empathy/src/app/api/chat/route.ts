@@ -13,7 +13,6 @@ export async function POST(req: NextRequest) {
     const apiResponse = await client.chat.completions.create({
       model: "openai/gpt-oss-20b:free",
       messages,
-      reasoning: { enabled: true },
     });
 
     const responseMessage = apiResponse.choices[0].message;
