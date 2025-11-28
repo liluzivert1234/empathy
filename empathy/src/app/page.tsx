@@ -152,6 +152,7 @@ export default function Home() {
           flexGrow: 1,
           overflowY: "auto",
           padding: "1rem",
+          paddingBottom: "80px", // extra space for input so it doesn't overlap on mobile
           display: "flex",
           flexDirection: "column",
         }}
@@ -186,7 +187,9 @@ export default function Home() {
                     maxWidth: "70%",
                     padding: "0.7rem",
                     borderRadius: "12px",
-                    backgroundColor: isUser ? "var(--user-bg)" : "var(--bot-bg)",
+                    backgroundColor: isUser
+                      ? "var(--user-bg)"
+                      : "var(--bot-bg)",
                     border: "1px solid var(--tab-border)",
                   }}
                 >
@@ -218,11 +221,19 @@ export default function Home() {
       {activeBot !== null && (
         <div
           style={{
-            padding: "1rem",
+            position: "fixed",
+            bottom: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "100%",
+            maxWidth: "800px",
+            padding: "0.5rem 1rem",
             borderTop: "1px solid var(--tab-border)",
             display: "flex",
             alignItems: "center",
             gap: "0.5rem",
+            backgroundColor: "var(--bg)",
+            boxSizing: "border-box",
           }}
         >
           <textarea
@@ -239,8 +250,8 @@ export default function Home() {
             placeholder="Type your message..."
             style={{
               flexGrow: 1,
-              padding: "0.7rem",
-              height: "60px",
+              padding: "0.5rem",
+              height: "50px", // slightly smaller for mobile
               resize: "none",
               borderRadius: "6px",
               border: "1px solid var(--input-border)",
@@ -248,12 +259,11 @@ export default function Home() {
               color: "var(--text)",
             }}
           />
-
           <button
             onClick={sendMessage}
             disabled={loading}
             style={{
-              padding: "0.8rem 1rem",
+              padding: "0.6rem 1rem",
               borderRadius: "6px",
               cursor: "pointer",
             }}
