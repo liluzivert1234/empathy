@@ -157,7 +157,7 @@ export default function Home() {
           flexGrow: 1,
           overflowY: "auto",
           padding: "1rem",
-          paddingTop: "60px", // space for fixed tabs
+          paddingTop: "100px", // increased padding for fixed tabs
           paddingBottom: "80px", // space for input
           display: "flex",
           flexDirection: "column",
@@ -174,6 +174,11 @@ export default function Home() {
           >
             Choose a chatbot to get started
           </div>
+        )}
+
+        {/* Add invisible spacer for first message */}
+        {activeBot !== null && messages.length > 0 && (
+          <div style={{ height: "10px" }}></div>
         )}
 
         {activeBot !== null &&
