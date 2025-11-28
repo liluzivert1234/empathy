@@ -11,12 +11,10 @@ interface ChatMessage {
 export default function Home() {
   const [activeBot, setActiveBot] = useState<"A" | "B" | null>(null);
 
-  // Chatbot A
   const [inputA, setInputA] = useState("");
   const [messagesA, setMessagesA] = useState<ChatMessage[]>([]);
   const [loadingA, setLoadingA] = useState(false);
 
-  // Chatbot B
   const [inputB, setInputB] = useState("");
   const [messagesB, setMessagesB] = useState<ChatMessage[]>([]);
   const [loadingB, setLoadingB] = useState(false);
@@ -30,35 +28,23 @@ export default function Home() {
     });
   }, [messagesA, messagesB, activeBot]);
 
-  const sendToBotA = async () => {
-    if (inputA.trim() === "") return;
-    const updated = [...messagesA, { role: "user" as const, content: inputA }];
+  const sendToBot = async (bot: "A" | "B") => {
+    const isA = bot === "A";
+    const input = isA ? inputA : inputB;
+    if (!input.trim()) return;
 
-    setMessagesA(updated);
-    setInputA("");
-    setLoadingA(true);
+    const messages = isA ? messagesA : messagesB;
+    const updated = [...messages, { role: "user" as const, content: input }];
 
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated }),
-      });
-
-      const data = await res.json();
-      if (data.message) setMessagesA([...updated, data.message]);
-    } finally {
-      setLoadingA(false);
+    if (isA) {
+      setMessagesA(updated);
+      setInputA("");
+      setLoadingA(true);
+    } else {
+      setMessagesB(updated);
+      setInputB("");
+      setLoadingB(true);
     }
-  };
-
-  const sendToBotB = async () => {
-    if (inputB.trim() === "") return;
-    const updated = [...messagesB, { role: "user" as const, content: inputB }];
-
-    setMessagesB(updated);
-    setInputB("");
-    setLoadingB(true);
 
     try {
       const res = await fetch("/api/chat", {
@@ -66,18 +52,21 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: updated }),
       });
-
       const data = await res.json();
-      if (data.message) setMessagesB([...updated, data.message]);
+      if (data.message) {
+        if (isA) setMessagesA([...updated, data.message]);
+        else setMessagesB([...updated, data.message]);
+      }
     } finally {
-      setLoadingB(false);
+      if (isA) setLoadingA(false);
+      else setLoadingB(false);
     }
   };
 
   const isA = activeBot === "A";
   const messages = isA ? messagesA : messagesB;
   const input = isA ? inputA : inputB;
-  const sendMessage = isA ? sendToBotA : sendToBotB;
+  const sendMessage = () => sendToBot(isA ? "A" : "B");
   const loading = isA ? loadingA : loadingB;
 
   return (
@@ -89,11 +78,50 @@ export default function Home() {
         fontFamily: "sans-serif",
         maxWidth: "800px",
         margin: "0 auto",
-        overflow: "hidden", // prevent page scroll
+        backgroundColor: "var(--bg)",
+        color: "var(--text)",
+        overflow: "hidden", // prevent whole page scroll
       }}
     >
-      {/* Top Tabs */}
-      <div style={{ display: "flex", borderBottom: "2px solid #ddd" }}>
+      {/* Light/Dark CSS variables */}
+      <style>{`
+        :root {
+          --bg: #fff;
+          --text: #000;
+          --tab-border: #ddd;
+          --user-bg: #ffe;
+          --bot-bg: #eef;
+          --input-border: #aaa;
+          --placeholder: #666;
+        }
+        @media (prefers-color-scheme: dark) {
+          :root {
+            --bg: #1a1a1a;
+            --text: #f0f0f0;
+            --tab-border: #555;
+            --user-bg: #333;
+            --bot-bg: #444;
+            --input-border: #666;
+            --placeholder: #aaa;
+          }
+        }
+      `}</style>
+
+      {/* Top Tabs - Fixed */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: "800px",
+          display: "flex",
+          borderBottom: "2px solid var(--tab-border)",
+          backgroundColor: "var(--bg)",
+          zIndex: 10,
+        }}
+      >
         <div
           onClick={() => setActiveBot("A")}
           style={{
@@ -107,7 +135,6 @@ export default function Home() {
         >
           Chatbot A
         </div>
-
         <div
           onClick={() => setActiveBot("B")}
           style={{
@@ -130,7 +157,8 @@ export default function Home() {
           flexGrow: 1,
           overflowY: "auto",
           padding: "1rem",
-          paddingBottom: "100px", // extra space for input
+          paddingTop: "60px", // space for fixed tabs
+          paddingBottom: "80px", // space for input
           display: "flex",
           flexDirection: "column",
         }}
@@ -141,7 +169,7 @@ export default function Home() {
               marginTop: "4rem",
               textAlign: "center",
               fontSize: "1.4rem",
-              color: "#666",
+              color: "var(--placeholder)",
             }}
           >
             Choose a chatbot to get started
@@ -165,8 +193,10 @@ export default function Home() {
                     maxWidth: "70%",
                     padding: "0.7rem",
                     borderRadius: "12px",
-                    backgroundColor: isUser ? "#ffe" : "#eef",
-                    border: "1px solid #ccc",
+                    backgroundColor: isUser
+                      ? "var(--user-bg)"
+                      : "var(--bot-bg)",
+                    border: "1px solid var(--tab-border)",
                   }}
                 >
                   <div
@@ -204,12 +234,13 @@ export default function Home() {
             width: "100%",
             maxWidth: "800px",
             padding: "0.5rem 1rem",
-            borderTop: "1px solid #ddd",
+            borderTop: "1px solid var(--tab-border)",
             display: "flex",
             alignItems: "center",
             gap: "0.5rem",
             backgroundColor: "var(--bg)",
             boxSizing: "border-box",
+            zIndex: 10,
           }}
         >
           <textarea
@@ -231,6 +262,8 @@ export default function Home() {
               resize: "none",
               borderRadius: "6px",
               border: "1px solid var(--input-border)",
+              backgroundColor: "var(--bg)",
+              color: "var(--text)",
             }}
           />
           <button
