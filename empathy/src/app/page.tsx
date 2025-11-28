@@ -23,8 +23,11 @@ export default function Home() {
   // Chatbot A handler
   const sendToBotA = async () => {
     if (inputA.trim() === "") return;
+    const updatedMessages: ChatMessage[] = [
+      ...messagesA,
+      { role: "user" as const, content: inputA },
+    ];
 
-    const updatedMessages = [...messagesA, { role: "user", content: inputA }];
     setMessagesA(updatedMessages);
     setInputA("");
     setLoadingA(true);
@@ -49,7 +52,11 @@ export default function Home() {
   const sendToBotB = async () => {
     if (inputB.trim() === "") return;
 
-    const updatedMessages = [...messagesB, { role: "user", content: inputB }];
+      const updatedMessages: ChatMessage[] = [
+    ...messagesB,
+    { role: "user" as const, content: inputB },
+  ];
+
     setMessagesB(updatedMessages);
     setInputB("");
     setLoadingB(true);
