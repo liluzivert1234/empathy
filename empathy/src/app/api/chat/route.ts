@@ -1,36 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const client = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
-
-export async function POST(req: NextRequest) {
-  const { messages } = await req.json();
-
+export async function POST(req: Request) {
   try {
+    const { messages } = await req.json();
 
-    const formattedMessages = messages.map((m: any) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const client = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
-    const apiResponse = await client.chat.completions.create({
-      model: "google/gemma-3-27b-it:free",
-      messages: formattedMessages,
+    const model = client.getGenerativeModel({
+      model: "gemma-3-27b-it",
     });
 
-    const responseMessage = apiResponse.choices[0].message;
+    const prompt = messages
+      .map((m: any) => `${m.role.toUpperCase()}: ${m.content}`)
+      .join("\n");
 
+    const result = await model.generateContent(prompt);
+
+    const text = result.response.text();
 
     return NextResponse.json({
-      message: {
-        role: "assistant",
-        content: responseMessage.content,
-      },
+      message: { role: "assistant", content: text },
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: any) {
+    console.error("Gemma 3 API Error:", err);
+    return NextResponse.json(
+      { error: "Gemma API failed", detail: err.message },
+      { status: 500 }
+    );
   }
 }
