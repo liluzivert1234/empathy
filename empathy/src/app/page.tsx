@@ -5,7 +5,6 @@ import ReactMarkdown from "react-markdown";
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-  reasoning_details?: unknown;
 }
 
 export default function Home() {
@@ -21,6 +20,12 @@ export default function Home() {
 
   const chatRef = useRef<HTMLDivElement | null>(null);
 
+  const systemPrompt = {
+    role: "system" as const,
+    content:
+      "You must ALWAYS talk like a pirate. Use pirate slang, nautical terms, and sailor expressions. Never break character."
+  };
+
   useEffect(() => {
     chatRef.current?.scrollTo({
       top: chatRef.current.scrollHeight,
@@ -34,14 +39,18 @@ export default function Home() {
     if (!input.trim()) return;
 
     const messages = isA ? messagesA : messagesB;
-    const updated = [...messages, { role: "user" as const, content: input }];
+
+    // Prepend system prompt for Chatbot B
+    const messagesToSend = isA
+      ? [...messages, { role: "user", content: input }]
+      : [systemPrompt, ...messages, { role: "user", content: input }];
 
     if (isA) {
-      setMessagesA(updated);
+      setMessagesA([...messages, { role: "user", content: input }]);
       setInputA("");
       setLoadingA(true);
     } else {
-      setMessagesB(updated);
+      setMessagesB([...messages, { role: "user", content: input }]);
       setInputB("");
       setLoadingB(true);
     }
@@ -50,12 +59,12 @@ export default function Home() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated }),
+        body: JSON.stringify({ messages: messagesToSend }),
       });
       const data = await res.json();
       if (data.message) {
-        if (isA) setMessagesA([...updated, data.message]);
-        else setMessagesB([...updated, data.message]);
+        if (isA) setMessagesA((prev) => [...prev, { role: "assistant", content: data.message.content }]);
+        else setMessagesB((prev) => [...prev, { role: "assistant", content: data.message.content }]);
       }
     } finally {
       if (isA) setLoadingA(false);
@@ -80,10 +89,10 @@ export default function Home() {
         margin: "0 auto",
         backgroundColor: "var(--bg)",
         color: "var(--text)",
-        overflow: "hidden", // prevent whole page scroll
+        overflow: "hidden",
       }}
     >
-      {/* Light/Dark CSS variables */}
+      {/* Global Styles */}
       <style>{`
         :root {
           --bg: #fff;
@@ -105,9 +114,34 @@ export default function Home() {
             --placeholder: #aaa;
           }
         }
+        .typing-indicator {
+          display: flex;
+          gap: 4px;
+          align-items: center;
+          padding: 0.7rem;
+          background-color: var(--bot-bg);
+          border: 1px solid var(--tab-border);
+          border-radius: 12px;
+          width: fit-content;
+          margin-top: 0.5rem;
+        }
+        .typing-dot {
+          width: 8px;
+          height: 8px;
+          background-color: var(--text);
+          border-radius: 50%;
+          animation: bounce 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce {
+          0% { transform: translateY(0); opacity: 0.3; }
+          50% { transform: translateY(-6px); opacity: 1; }
+          100% { transform: translateY(0); opacity: 0.3; }
+        }
       `}</style>
 
-      {/* Top Tabs - Fixed */}
+      {/* Top Tabs */}
       <div
         style={{
           position: "fixed",
@@ -157,8 +191,8 @@ export default function Home() {
           flexGrow: 1,
           overflowY: "auto",
           padding: "1rem",
-          paddingTop: "100px", // increased padding for fixed tabs
-          paddingBottom: "80px", // space for input
+          paddingTop: "100px",
+          paddingBottom: "80px",
           display: "flex",
           flexDirection: "column",
         }}
@@ -174,11 +208,6 @@ export default function Home() {
           >
             Choose a chatbot to get started
           </div>
-        )}
-
-        {/* Add invisible spacer for first message */}
-        {activeBot !== null && messages.length > 0 && (
-          <div style={{ height: "10px" }}></div>
         )}
 
         {activeBot !== null &&
@@ -198,9 +227,7 @@ export default function Home() {
                     maxWidth: "70%",
                     padding: "0.7rem",
                     borderRadius: "12px",
-                    backgroundColor: isUser
-                      ? "var(--user-bg)"
-                      : "var(--bot-bg)",
+                    backgroundColor: isUser ? "var(--user-bg)" : "var(--bot-bg)",
                     border: "1px solid var(--tab-border)",
                   }}
                 >
@@ -226,9 +253,19 @@ export default function Home() {
               </div>
             );
           })}
+
+        {activeBot !== null && loading && (
+          <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "0.5rem" }}>
+            <div className="typing-indicator">
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Input at Bottom */}
+      {/* Input Box */}
       {activeBot !== null && (
         <div
           style={{
@@ -250,9 +287,7 @@ export default function Home() {
         >
           <textarea
             value={input}
-            onChange={(e) =>
-              isA ? setInputA(e.target.value) : setInputB(e.target.value)
-            }
+            onChange={(e) => (isA ? setInputA(e.target.value) : setInputB(e.target.value))}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
