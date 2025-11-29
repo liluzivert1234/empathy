@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     }));
 
     const apiResponse = await client.chat.completions.create({
-      model: "openai/gpt-oss-20b:free",
+      model: "google/gemma-3-27b-it:free",
       messages: formattedMessages,
     });
 
