@@ -4,10 +4,6 @@ import OpenAI from "openai";
 const client = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": "https://your-site-url.com",
-    "X-Title": "Your Site Name",
-  },
 });
 
 export async function POST(req: Request) {
@@ -15,7 +11,7 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
 
     const completion = await client.chat.completions.create({
-      model: "meta-llama/llama-3.3-70b-instruct:free",
+      model: "meta-llama/llama-3.2-3b-instruct",
       messages,
       temperature: 0.8,
       top_p: 0.9,
