@@ -21,15 +21,18 @@ export default function Home() {
   const chatRef = useRef<HTMLDivElement | null>(null);
 
   const systemPrompt = {
-  role: "system" as const,
-  content: `**System Instruction:**
+    role: "system" as const,
+    content: `**System Instruction:**
+Don't assume user is Filipino. Only use Filipino/Taglish once user speaks in Tagalog/Taglish. Start with English otherwise.
 
-**Role:** You are a genuine, supportive, and casual Filipino companion. You are NOT a therapist. You are NOT a poet. You are NOT a "kanto" caricature. You are just a normal person.
+**Role:** You are a genuine, supportive, and casual Filipino companion. NOT a therapist, poet, or caricature. Normal person only.
 
 **Voice & Tone:**
-1.  **Manila-based Taglish:** Natural mix. No deep/formal words.
-2.  **NO "Therapy Speak":** NEVER say "Valid ang feelings mo," "I-allow natin ang sarili natin," or "Ramdam ko ang bigat ng weight." This is "yapping" and feels fake.
-3.  **No Cringe Slang:** No "pare/tol/lodi/boss."
+- Manila-based Taglish when appropriate
+- NO "therapy speak" or cringe slang
+- NEVER say "Valid ang feelings mo," "I-allow natin ang sarili natin," or "Ramdam ko ang bigat ng weight." This is "yapping" and feels fake.
+- Short, natural responses. Max 0 emojis. Use all caps for laughs ("HAHAHA") sparingly.
+- No Cringe Slang:** No "pare/tol/lodi/boss."
 
 **CRITICAL BEHAVIOR RULES:**
 
@@ -54,6 +57,7 @@ export default function Home() {
 **Formatting:**
 * Lowercase mostly.
 * Max 0 emojis. 
+* Avoid punctations, Filipinos often skip using ! or ?
 
 **Example Training Data (The "Gold Standard"):**
 
@@ -74,9 +78,22 @@ User: ambigat lang talaga
 Assistant: gets. pahinga mo lang muna. wag mo pilitin mag-isip.
 
 **Instruction:** Reply to the user's next message. Be concise. Do not lecture. Do not yap.
-`
-};
 
+
+4. Humor & Teasing - detect jokes or playful teasing. Respond in **two parts**:
+   - Part 1: short reaction (immediate)
+   - Part 2: playful laugh or comment after 2 second
+   - Separate with [PART2]
+   - Example: User: "sarap mo" → Assistant: "ikaw din [PART2] HAHAHAHA"
+
+**Formatting Examples:**
+User: "nalulungkot ako" → Assistant: "hala bakit? [PART 2] anong nangyari?"
+User: "sarap mo" → Assistant: "ikaw din [PART2] HAHAHAHA"
+
+ONLY USE PART 2's IF NECESSARY
+
+`
+  };
 
   useEffect(() => {
     chatRef.current?.scrollTo({
@@ -85,14 +102,27 @@ Assistant: gets. pahinga mo lang muna. wag mo pilitin mag-isip.
     });
   }, [messagesA, messagesB, activeBot]);
 
+  const handleTwoPartResponse = (content: string, isA: boolean) => {
+    if (content.includes("[PART2]")) {
+      const [first, second] = content.split("[PART2]");
+      if (isA) setMessagesA(prev => [...prev, { role: "assistant", content: first.trim() }]);
+      else setMessagesB(prev => [...prev, { role: "assistant", content: first.trim() }]);
+      setTimeout(() => {
+        if (isA) setMessagesA(prev => [...prev, { role: "assistant", content: second.trim() }]);
+        else setMessagesB(prev => [...prev, { role: "assistant", content: second.trim() }]);
+      }, 2000);
+    } else {
+      if (isA) setMessagesA(prev => [...prev, { role: "assistant", content }]);
+      else setMessagesB(prev => [...prev, { role: "assistant", content }]);
+    }
+  };
+
   const sendToBot = async (bot: "A" | "B") => {
     const isA = bot === "A";
     const input = isA ? inputA : inputB;
     if (!input.trim()) return;
 
     const messages = isA ? messagesA : messagesB;
-
-    // Prepend system prompt for Chatbot B
     const messagesToSend = isA
       ? [...messages, { role: "user", content: input }]
       : [systemPrompt, ...messages, { role: "user", content: input }];
@@ -114,10 +144,7 @@ Assistant: gets. pahinga mo lang muna. wag mo pilitin mag-isip.
         body: JSON.stringify({ messages: messagesToSend }),
       });
       const data = await res.json();
-      if (data.message) {
-        if (isA) setMessagesA((prev) => [...prev, { role: "assistant", content: data.message.content }]);
-        else setMessagesB((prev) => [...prev, { role: "assistant", content: data.message.content }]);
-      }
+      if (data.message?.content) handleTwoPartResponse(data.message.content, isA);
     } finally {
       if (isA) setLoadingA(false);
       else setLoadingB(false);
@@ -131,19 +158,17 @@ Assistant: gets. pahinga mo lang muna. wag mo pilitin mag-isip.
   const loading = isA ? loadingA : loadingB;
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: "sans-serif",
-        maxWidth: "800px",
-        margin: "0 auto",
-        backgroundColor: "var(--bg)",
-        color: "var(--text)",
-        overflow: "hidden",
-      }}
-    >
+    <div style={{
+      height: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      fontFamily: "sans-serif",
+      maxWidth: "800px",
+      margin: "0 auto",
+      backgroundColor: "var(--bg)",
+      color: "var(--text)",
+      overflow: "hidden",
+    }}>
       {/* Global Styles */}
       <style>{`
         :root {
@@ -194,117 +219,86 @@ Assistant: gets. pahinga mo lang muna. wag mo pilitin mag-isip.
       `}</style>
 
       {/* Top Tabs */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "100%",
-          maxWidth: "800px",
-          display: "flex",
-          borderBottom: "2px solid var(--tab-border)",
-          backgroundColor: "var(--bg)",
-          zIndex: 10,
-        }}
-      >
-        <div
-          onClick={() => setActiveBot("A")}
-          style={{
-            padding: "0.7rem 1.2rem",
-            cursor: "pointer",
-            borderBottom: activeBot === "A" ? "3px solid #4a4aff" : "none",
-            fontWeight: activeBot === "A" ? "bold" : "normal",
-            flex: 1,
-            textAlign: "center",
-          }}
-        >
-          Chatbot A
-        </div>
-        <div
-          onClick={() => setActiveBot("B")}
-          style={{
-            padding: "0.7rem 1.2rem",
-            cursor: "pointer",
-            borderBottom: activeBot === "B" ? "3px solid #ff4a4a" : "none",
-            fontWeight: activeBot === "B" ? "bold" : "normal",
-            flex: 1,
-            textAlign: "center",
-          }}
-        >
-          Chatbot B
-        </div>
+      <div style={{
+        position: "fixed",
+        top: 0,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "100%",
+        maxWidth: "800px",
+        display: "flex",
+        borderBottom: "2px solid var(--tab-border)",
+        backgroundColor: "var(--bg)",
+        zIndex: 10,
+      }}>
+        <div onClick={() => setActiveBot("A")} style={{
+          padding: "0.7rem 1.2rem",
+          cursor: "pointer",
+          borderBottom: activeBot === "A" ? "3px solid #4a4aff" : "none",
+          fontWeight: activeBot === "A" ? "bold" : "normal",
+          flex: 1,
+          textAlign: "center",
+        }}>Chatbot A</div>
+        <div onClick={() => setActiveBot("B")} style={{
+          padding: "0.7rem 1.2rem",
+          cursor: "pointer",
+          borderBottom: activeBot === "B" ? "3px solid #ff4a4a" : "none",
+          fontWeight: activeBot === "B" ? "bold" : "normal",
+          flex: 1,
+          textAlign: "center",
+        }}>Chatbot B</div>
       </div>
 
       {/* Chat Window */}
-      <div
-        ref={chatRef}
-        style={{
-          flexGrow: 1,
-          overflowY: "auto",
-          padding: "1rem",
-          paddingTop: "100px",
-          paddingBottom: "80px",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+      <div ref={chatRef} style={{
+        flexGrow: 1,
+        overflowY: "auto",
+        padding: "1rem",
+        paddingTop: "100px",
+        paddingBottom: "80px",
+        display: "flex",
+        flexDirection: "column",
+      }}>
         {activeBot === null && (
-          <div
-            style={{
-              marginTop: "4rem",
-              textAlign: "center",
-              fontSize: "1.4rem",
-              color: "var(--placeholder)",
-            }}
-          >
+          <div style={{
+            marginTop: "4rem",
+            textAlign: "center",
+            fontSize: "1.4rem",
+            color: "var(--placeholder)",
+          }}>
             Choose a chatbot to get started
           </div>
         )}
 
-        {activeBot !== null &&
-          messages.map((msg, idx) => {
-            const isUser = msg.role === "user";
-            return (
-              <div
-                key={idx}
-                style={{
-                  display: "flex",
-                  justifyContent: isUser ? "flex-end" : "flex-start",
-                  marginTop: "0.5rem",
-                }}
-              >
-                <div
-                  style={{
-                    maxWidth: "70%",
-                    padding: "0.7rem",
-                    borderRadius: "12px",
-                    backgroundColor: isUser ? "var(--user-bg)" : "var(--bot-bg)",
-                    border: "1px solid var(--tab-border)",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontWeight: "bold",
-                      marginBottom: "0.3rem",
-                      textAlign: isUser ? "right" : "left",
-                    }}
-                  >
-                    {isUser ? "You" : isA ? "Chatbot A" : "Chatbot B"}
-                  </div>
-                  <ReactMarkdown
-                    components={{
-                      p: ({ node, ...props }) => (
-                        <p style={{ margin: "0.2rem 0" }} {...props} />
-                      ),
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
+        {activeBot !== null && messages.map((msg, idx) => {
+          const isUser = msg.role === "user";
+          return (
+            <div key={idx} style={{
+              display: "flex",
+              justifyContent: isUser ? "flex-end" : "flex-start",
+              marginTop: "0.5rem",
+            }}>
+              <div style={{
+                maxWidth: "70%",
+                padding: "0.7rem",
+                borderRadius: "12px",
+                backgroundColor: isUser ? "var(--user-bg)" : "var(--bot-bg)",
+                border: "1px solid var(--tab-border)",
+              }}>
+                <div style={{
+                  fontWeight: "bold",
+                  marginBottom: "0.3rem",
+                  textAlign: isUser ? "right" : "left",
+                }}>
+                  {isUser ? "You" : isA ? "Chatbot A" : "Chatbot B"}
                 </div>
+                <ReactMarkdown components={{ p: ({ node, ...props }) => <p style={{ margin: "0.2rem 0" }} {...props} /> }}>
+                  {msg.content}
+                </ReactMarkdown>
               </div>
-            );
-          })}
+            </div>
+          );
+        })}
 
         {activeBot !== null && loading && (
           <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "0.5rem" }}>
@@ -319,33 +313,26 @@ Assistant: gets. pahinga mo lang muna. wag mo pilitin mag-isip.
 
       {/* Input Box */}
       {activeBot !== null && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "100%",
-            maxWidth: "800px",
-            padding: "0.5rem 1rem",
-            borderTop: "1px solid var(--tab-border)",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            backgroundColor: "var(--bg)",
-            boxSizing: "border-box",
-            zIndex: 10,
-          }}
-        >
+        <div style={{
+          position: "fixed",
+          bottom: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: "800px",
+          padding: "0.5rem 1rem",
+          borderTop: "1px solid var(--tab-border)",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          backgroundColor: "var(--bg)",
+          boxSizing: "border-box",
+          zIndex: 10,
+        }}>
           <textarea
             value={input}
-            onChange={(e) => (isA ? setInputA(e.target.value) : setInputB(e.target.value))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-              }
-            }}
+            onChange={(e) => isA ? setInputA(e.target.value) : setInputB(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
             placeholder="Type your message..."
             style={{
               flexGrow: 1,
@@ -358,15 +345,11 @@ Assistant: gets. pahinga mo lang muna. wag mo pilitin mag-isip.
               color: "var(--text)",
             }}
           />
-          <button
-            onClick={sendMessage}
-            disabled={loading}
-            style={{
-              padding: "0.6rem 1rem",
-              borderRadius: "6px",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={sendMessage} disabled={loading} style={{
+            padding: "0.6rem 1rem",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}>
             {loading ? "Thinking..." : "Send"}
           </button>
         </div>
