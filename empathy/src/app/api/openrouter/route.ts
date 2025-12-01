@@ -11,11 +11,11 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
 
     const completion = await client.chat.completions.create({
-      model: "meta-llama/llama-3.2-3b-instruct",
+      model: "meta-llama/llama-3.3-70b-instruct",
       messages,
       temperature: 0.8,
       top_p: 0.9,
-      max_tokens: 300,
+      max_tokens: 2000,
     });
 
     const content = completion.choices?.[0]?.message?.content || "";
