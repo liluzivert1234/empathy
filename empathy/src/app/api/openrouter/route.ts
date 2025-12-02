@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
 
     const completion = await client.chat.completions.create({
-      model: "google/gemini-2.0-flash-001",
+      model: "openai/gpt-5-chat",
       messages,
       temperature: 0.8,
       top_p: 0.9,
